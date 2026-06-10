@@ -73,15 +73,18 @@ async function deleteStudent(req, res) {
 
 async function getMyProgress(req, res) {
   try {
-    const [student] = await db.query('SELECT id FROM students WHERE user_id = ?', [req.user.id]);
-    if (!student) return res.status(404).json({ error: 'Student profile not found' });
+    const [studentRow] = await db.query(
+      'SELECT id, total_xp FROM students WHERE user_id = ?',
+      [req.user.id]
+    );
+    if (!studentRow) return res.status(404).json({ error: 'Student profile not found' });
 
     const enrollments = await db.query(
       `SELECT e.*, c.title, c.thumbnail_url
        FROM enrollments e
        JOIN courses c ON c.id = e.course_id
        WHERE e.student_id = ?`,
-      [student.id]
+      [studentRow.id]
     );
 
     const quizResults = await db.query(
@@ -90,10 +93,10 @@ async function getMyProgress(req, res) {
        JOIN quizzes q ON q.id = qr.quiz_id
        WHERE qr.student_id = ?
        ORDER BY qr.submitted_at DESC LIMIT 10`,
-      [student.id]
+      [studentRow.id]
     );
 
-    res.json({ enrollments, quizResults, totalXp: student.total_xp || 0 });
+    res.json({ enrollments, quizResults, totalXp: studentRow.total_xp || 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
