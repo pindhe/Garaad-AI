@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS assignments (
   course_id INT NOT NULL,
   title VARCHAR(255) NOT NULL,
   description TEXT,
-  due_date TIMESTAMP,
+  due_date DATETIME NULL,
   max_score DECIMAL(5,2) DEFAULT 100,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
@@ -176,8 +176,8 @@ CREATE TABLE IF NOT EXISTS exams (
   time_limit_minutes INT DEFAULT 60,
   passing_score DECIMAL(5,2) DEFAULT 60,
   is_published BOOLEAN DEFAULT FALSE,
-  start_date TIMESTAMP,
-  end_date TIMESTAMP,
+  start_date DATETIME NULL,
+  end_date DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
 );
