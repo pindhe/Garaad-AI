@@ -22,8 +22,27 @@ if (!fs.existsSync(uploadDir)) {
 
 const app = express();
 
-app.use(helmet());
-app.use(cors({ origin: config.corsOrigin, credentials: true }));
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
+const corsOptions =
+  config.nodeEnv === 'development'
+    ? {
+        origin: (origin, callback) => {
+          if (
+            !origin ||
+            /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+            origin === config.corsOrigin
+          ) {
+            callback(null, true);
+          } else {
+            callback(null, true);
+          }
+        },
+        credentials: true,
+      }
+    : { origin: config.corsOrigin, credentials: true };
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(apiLimiter);

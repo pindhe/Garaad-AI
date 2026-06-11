@@ -10,6 +10,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
   final _email = TextEditingController();
@@ -18,14 +19,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _error;
 
   Future<void> _register() async {
-    setState(() { _loading = true; _error = null; });
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       await context.read<AuthProvider>().register(
-        email: _email.text.trim(),
-        password: _password.text,
-        firstName: _firstName.text.trim(),
-        lastName: _lastName.text.trim(),
-      );
+            email: _email.text.trim(),
+            password: _password.text,
+            firstName: _firstName.text.trim(),
+            lastName: _lastName.text.trim(),
+          );
       if (mounted) Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       setState(() => _error = e.toString().replaceAll('Exception: ', ''));
@@ -40,39 +45,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
       appBar: AppBar(title: const Text('Create Account')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            if (_error != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
-                child: Text(_error!, style: TextStyle(color: Colors.red.shade700)),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              if (_error != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(_error!, style: TextStyle(color: Colors.red.shade700)),
+                ),
+              TextFormField(
+                controller: _firstName,
+                decoration: const InputDecoration(labelText: 'First Name'),
+                validator: (v) => v != null && v.isNotEmpty ? null : 'Required',
               ),
-            TextField(controller: _firstName, decoration: const InputDecoration(labelText: 'First Name')),
-            const SizedBox(height: 16),
-            TextField(controller: _lastName, decoration: const InputDecoration(labelText: 'Last Name')),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _password,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Password (min 6 chars)'),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _register,
-                child: _loading ? const CircularProgressIndicator(color: Colors.white) : const Text('Register'),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _lastName,
+                decoration: const InputDecoration(labelText: 'Last Name'),
+                validator: (v) => v != null && v.isNotEmpty ? null : 'Required',
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Email'),
+                validator: (v) => v != null && v.contains('@') ? null : 'Invalid email',
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _password,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+                validator: (v) => v != null && v.length >= 6 ? null : 'Min 6 characters',
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _register,
+                  child: _loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Create Account'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

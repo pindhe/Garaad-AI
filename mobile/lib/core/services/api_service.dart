@@ -1,12 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
 
 class ApiService {
-  static const baseUrl = String.fromEnvironment(
-    'API_URL',
-    defaultValue: 'http://10.0.2.2:5000',
-  );
+  static String get baseUrl => ApiConfig.baseUrl;
 
   String? _token;
 
@@ -33,31 +31,68 @@ class ApiService {
       };
 
   Future<dynamic> get(String path) async {
-    final res = await http.get(Uri.parse('$baseUrl$path'), headers: _headers);
-    return _handleResponse(res);
+    try {
+      final res = await http
+          .get(Uri.parse('$baseUrl$path'), headers: _headers)
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse(res);
+    } catch (e) {
+      throw Exception(_networkMessage(e));
+    }
   }
 
   Future<dynamic> post(String path, Map<String, dynamic> body) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl$path'),
-      headers: _headers,
-      body: jsonEncode(body),
-    );
-    return _handleResponse(res);
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$baseUrl$path'),
+            headers: _headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse(res);
+    } catch (e) {
+      throw Exception(_networkMessage(e));
+    }
+  }
+
+  String _networkMessage(Object e) {
+    final msg = e.toString();
+    if (msg.contains('Failed to fetch') || msg.contains('SocketException') || msg.contains('Connection refused')) {
+      return 'Cannot reach server at $baseUrl. Start the backend: cd backend && npm run dev';
+    }
+    if (msg.contains('TimeoutException')) {
+      return 'Server timed out. Check that the backend is running.';
+    }
+    return msg.replaceAll('Exception: ', '');
   }
 
   dynamic _handleResponse(http.Response res) {
-    final data = jsonDecode(res.body);
+    if (res.body.isEmpty) {
+      if (res.statusCode >= 400) throw Exception('Request failed (${res.statusCode})');
+      return {};
+    }
+
+    dynamic data;
+    try {
+      data = jsonDecode(res.body);
+    } catch (_) {
+      throw Exception('Invalid server response');
+    }
+
     if (res.statusCode >= 400) {
-      throw Exception(data['error'] ?? 'Request failed');
+      final message = data is Map ? (data['error'] ?? 'Request failed') : 'Request failed';
+      throw Exception(message);
     }
     return data;
   }
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     final data = await post('/auth/login', {'email': email, 'password': password});
-    await saveToken(data['token']);
-    return data;
+    final token = data['token'] as String?;
+    if (token == null) throw Exception('Invalid login response');
+    await saveToken(token);
+    return Map<String, dynamic>.from(data as Map);
   }
 
   Future<Map<String, dynamic>> register({
@@ -66,22 +101,22 @@ class ApiService {
     required String firstName,
     required String lastName,
   }) async {
-    return await post('/auth/register', {
+    return Map<String, dynamic>.from(await post('/auth/register', {
       'email': email,
       'password': password,
       'firstName': firstName,
       'lastName': lastName,
       'role': 'student',
-    });
+    }) as Map);
   }
 
   Future<List<dynamic>> getCourses() async {
     final data = await get('/courses');
-    return data as List<dynamic>;
+    return data is List ? data : [];
   }
 
   Future<Map<String, dynamic>> getCourse(int id) async {
-    return await get('/courses/$id');
+    return Map<String, dynamic>.from(await get('/courses/$id') as Map);
   }
 
   Future<void> enrollCourse(int id) async {
@@ -89,44 +124,48 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getLesson(int id) async {
-    return await get('/lessons/$id');
+    return Map<String, dynamic>.from(await get('/lessons/$id') as Map);
   }
 
   Future<void> completeLesson(int id) async {
     await post('/lessons/$id/complete', {});
   }
 
-  Future<Map<String, dynamic>> chat(String message, {String? sessionId, List<Map<String, String>>? history}) async {
-    return await post('/ai/chat', {
+  Future<Map<String, dynamic>> chat(
+    String message, {
+    String? sessionId,
+    List<Map<String, String>>? history,
+  }) async {
+    return Map<String, dynamic>.from(await post('/ai/chat', {
       'message': message,
       if (sessionId != null) 'sessionId': sessionId,
       if (history != null) 'history': history,
-    });
+    }) as Map);
   }
 
   Future<Map<String, dynamic>> getQuiz(int id) async {
-    return await get('/exams/quizzes/$id');
+    return Map<String, dynamic>.from(await get('/exams/quizzes/$id') as Map);
   }
 
   Future<Map<String, dynamic>> submitQuiz(int id, List<dynamic> answers, int timeTaken) async {
-    return await post('/exams/quizzes/$id/submit', {
+    return Map<String, dynamic>.from(await post('/exams/quizzes/$id/submit', {
       'answers': answers,
       'timeTakenSeconds': timeTaken,
-    });
+    }) as Map);
   }
 
   Future<List<dynamic>> getAssignments({int? courseId}) async {
     final path = courseId != null ? '/assignments?courseId=$courseId' : '/assignments';
     final data = await get(path);
-    return data as List<dynamic>;
+    return data is List ? data : [];
   }
 
   Future<Map<String, dynamic>> getProgress() async {
-    return await get('/students/progress');
+    return Map<String, dynamic>.from(await get('/students/progress') as Map);
   }
 
   Future<List<dynamic>> getCertificates() async {
     final data = await get('/exams/certificates');
-    return data as List<dynamic>;
+    return data is List ? data : [];
   }
 }

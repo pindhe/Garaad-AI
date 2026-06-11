@@ -18,24 +18,19 @@ class MacallinApp extends StatelessWidget {
       create: (_) => AuthProvider()..init(),
       child: Consumer<AuthProvider>(
         builder: (context, auth, _) {
-          if (auth.loading) {
-            return MaterialApp(
-              debugShowCheckedModeBanner: false,
-              theme: AppTheme.light(),
-              home: const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              ),
-            );
-          }
-
           return MaterialApp(
             title: 'MacallinAI',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
             themeMode: ThemeMode.system,
+            navigatorKey: AppRouter.navigatorKey,
             onGenerateRoute: AppRouter.generateRoute,
-            initialRoute: auth.isAuthenticated ? '/home' : '/',
+            initialRoute: auth.loading
+                ? '/loading'
+                : auth.isAuthenticated
+                    ? '/home'
+                    : '/',
           );
         },
       ),

@@ -1,5 +1,5 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../../core/theme/app_theme.dart';
 
 class GlassCard extends StatelessWidget {
   final Widget child;
@@ -19,33 +19,38 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    Widget content = ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            gradient: gradient,
-            color: gradient == null
-                ? (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7))
-                : null,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.5),
-            ),
-            boxShadow: gradient == null
-                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))]
-                : [BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 8))],
-          ),
-          child: child,
+    Widget card = Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        gradient: gradient,
+        color: gradient == null
+            ? (isDark ? AppColors.darkSurface : Colors.white)
+            : null,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: gradient != null
+              ? Colors.transparent
+              : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: gradient != null
+                ? AppColors.primary.withValues(alpha: 0.25)
+                : Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+            blurRadius: gradient != null ? 20 : 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
+      child: child,
     );
 
     if (onTap != null) {
-      return GestureDetector(onTap: onTap, child: content);
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(16), child: card),
+      );
     }
-    return content;
+    return card;
   }
 }

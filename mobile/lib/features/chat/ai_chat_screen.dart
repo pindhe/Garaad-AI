@@ -4,7 +4,8 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AiChatScreen extends StatefulWidget {
-  const AiChatScreen({super.key});
+  final bool embedded;
+  const AiChatScreen({super.key, this.embedded = false});
 
   @override
   State<AiChatScreen> createState() => _AiChatScreenState();
@@ -17,12 +18,18 @@ class _AiChatScreenState extends State<AiChatScreen> {
   String? _sessionId;
   bool _loading = false;
 
-  Future<void> _send() async {
-    final text = _controller.text.trim();
-    if (text.isEmpty || _loading) return;
+  static const _suggestions = [
+    'Explain photosynthesis simply',
+    'Help me with algebra',
+    'Create a study plan for exams',
+  ];
+
+  Future<void> _send([String? text]) async {
+    final message = (text ?? _controller.text).trim();
+    if (message.isEmpty || _loading) return;
 
     setState(() {
-      _messages.add({'role': 'user', 'content': text});
+      _messages.add({'role': 'user', 'content': message});
       _loading = true;
     });
     _controller.clear();
@@ -31,16 +38,29 @@ class _AiChatScreenState extends State<AiChatScreen> {
     try {
       final api = context.read<AuthProvider>().api;
       final history = _messages.length > 1
-          ? _messages.sublist(0, _messages.length - 1).map((m) => {'role': m['role']!, 'content': m['content']!}).toList()
+          ? _messages
+              .sublist(0, _messages.length - 1)
+              .map((m) => {'role': m['role'] ?? 'user', 'content': m['content'] ?? ''})
+              .toList()
           : <Map<String, String>>[];
 
-      final result = await api.chat(text, sessionId: _sessionId, history: history);
-      _sessionId = result['sessionId'];
-      setState(() => _messages.add({'role': 'assistant', 'content': result['reply']}));
+      final result = await api.chat(message, sessionId: _sessionId, history: history);
+      _sessionId = result['sessionId']?.toString();
+      setState(() {
+        _messages.add({
+          'role': 'assistant',
+          'content': result['reply']?.toString() ?? 'No response received.',
+        });
+      });
     } catch (e) {
-      setState(() => _messages.add({'role': 'assistant', 'content': 'Error: ${e.toString().replaceAll('Exception: ', '')}'}));
+      setState(() {
+        _messages.add({
+          'role': 'assistant',
+          'content': 'Sorry, I could not respond. ${e.toString().replaceAll('Exception: ', '')}',
+        });
+      });
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
       _scrollToBottom();
     }
   }
@@ -57,8 +77,90 @@ class _AiChatScreenState extends State<AiChatScreen> {
     });
   }
 
+  Widget _buildChat() {
+    return Column(
+      children: [
+        Expanded(
+          child: _messages.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.smart_toy_rounded, size: 48, color: AppColors.primary),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text('Your AI Teacher', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Ask anything — get step-by-step explanations',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 24),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: _suggestions
+                              .map((s) => ActionChip(
+                                    label: Text(s, style: const TextStyle(fontSize: 12)),
+                                    onPressed: () => _send(s),
+                                  ))
+                              .toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _messages.length,
+                  itemBuilder: (_, i) => _ChatBubble(message: _messages[i]),
+                ),
+        ),
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                SizedBox(width: 8),
+                Text('AI is thinking...', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              ],
+            ),
+          ),
+        _InputBar(controller: _controller, onSend: () => _send()),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text('AI Teacher', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+            ),
+            Expanded(child: _buildChat()),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Row(
@@ -69,68 +171,57 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ],
         ),
       ),
-      body: Column(
+      body: _buildChat(),
+    );
+  }
+}
+
+class _InputBar extends StatelessWidget {
+  final TextEditingController controller;
+  final VoidCallback onSend;
+
+  const _InputBar({required this.controller, required this.onSend});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Row(
         children: [
           Expanded(
-            child: _messages.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey.shade400),
-                        const SizedBox(height: 16),
-                        const Text('Ask your AI teacher anything!', style: TextStyle(color: AppColors.textSecondary)),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _messages.length,
-                    itemBuilder: (_, i) => _ChatBubble(message: _messages[i]),
-                  ),
-          ),
-          if (_loading)
-            const Padding(
-              padding: EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                  SizedBox(width: 8),
-                  Text('AI is thinking...', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                ],
+            child: TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                hintText: 'Ask a question...',
+                filled: true,
+                fillColor: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkSurface
+                    : Colors.grey.shade100,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               ),
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => onSend(),
             ),
-          Container(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, -2))],
-            ),
-            child: Row(
-              children: [
-                IconButton(icon: const Icon(Icons.attach_file), onPressed: () {}),
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'Ask a question...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    ),
-                    onSubmitted: (_) => _send(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                CircleAvatar(
-                  backgroundColor: AppColors.primary,
-                  child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                    onPressed: _send,
-                  ),
-                ),
-              ],
+          ),
+          const SizedBox(width: 8),
+          Material(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(24),
+            child: InkWell(
+              onTap: onSend,
+              borderRadius: BorderRadius.circular(24),
+              child: const Padding(
+                padding: EdgeInsets.all(12),
+                child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
+              ),
             ),
           ),
         ],
@@ -141,12 +232,13 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
 class _ChatBubble extends StatelessWidget {
   final Map<String, String> message;
-
   const _ChatBubble({required this.message});
 
   @override
   Widget build(BuildContext context) {
     final isUser = message['role'] == 'user';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -154,18 +246,19 @@ class _ChatBubble extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
         decoration: BoxDecoration(
-          color: isUser ? AppColors.primary : (Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E293B) : Colors.white),
+          color: isUser ? AppColors.primary : (isDark ? AppColors.darkSurface : Colors.white),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
             bottomLeft: Radius.circular(isUser ? 16 : 4),
             bottomRight: Radius.circular(isUser ? 4 : 16),
           ),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)],
+          border: isUser ? null : Border.all(color: Colors.grey.shade200),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
         ),
         child: Text(
           message['content'] ?? '',
-          style: TextStyle(color: isUser ? Colors.white : null, height: 1.4),
+          style: TextStyle(color: isUser ? Colors.white : null, height: 1.45, fontSize: 14),
         ),
       ),
     );
