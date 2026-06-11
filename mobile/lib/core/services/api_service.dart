@@ -37,6 +37,9 @@ class ApiService {
           .timeout(const Duration(seconds: 15));
       return _handleResponse(res);
     } catch (e) {
+      if (e is Exception && !e.toString().contains('ClientException') && !e.toString().contains('SocketException')) {
+        rethrow;
+      }
       throw Exception(_networkMessage(e));
     }
   }
@@ -52,6 +55,9 @@ class ApiService {
           .timeout(const Duration(seconds: 15));
       return _handleResponse(res);
     } catch (e) {
+      if (e is Exception && !e.toString().contains('ClientException') && !e.toString().contains('SocketException')) {
+        rethrow;
+      }
       throw Exception(_networkMessage(e));
     }
   }
