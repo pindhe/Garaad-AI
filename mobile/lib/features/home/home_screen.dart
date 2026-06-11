@@ -273,8 +273,9 @@ class _ProfileTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 32),
-          _ProfileTile(icon: Icons.workspace_premium_outlined, label: 'Certificates', onTap: () => Navigator.pushNamed(context, '/certificates')),
+          _ProfileTile(icon: Icons.notifications_outlined, label: 'Notifications', onTap: () => Navigator.pushNamed(context, '/notifications')),
           _ProfileTile(icon: Icons.assignment_outlined, label: 'Assignments', onTap: () => Navigator.pushNamed(context, '/assignments')),
+          _ProfileTile(icon: Icons.workspace_premium_outlined, label: 'Certificates', onTap: () => Navigator.pushNamed(context, '/certificates')),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,

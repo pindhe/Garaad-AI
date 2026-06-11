@@ -12,5 +12,7 @@ router.get('/subscriptions', analyticsController.listSubscriptions);
 router.post('/announcements', authorize('admin'), analyticsController.createAnnouncement);
 router.get('/notifications', analyticsController.getNotifications);
 router.put('/notifications/:id/read', analyticsController.markNotificationRead);
+router.get('/settings', authorize('admin'), analyticsController.getSettings);
+router.put('/settings', authorize('admin'), analyticsController.updateSettings);
 
 module.exports = router;

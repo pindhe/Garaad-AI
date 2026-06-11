@@ -174,4 +174,50 @@ class ApiService {
     final data = await get('/exams/certificates');
     return data is List ? data : [];
   }
+
+  Future<Map<String, dynamic>> issueCertificate(int courseId) async {
+    return Map<String, dynamic>.from(await post('/exams/certificates/$courseId', {}) as Map);
+  }
+
+  Future<List<dynamic>> getExams({int? courseId}) async {
+    final path = courseId != null ? '/exams?courseId=$courseId' : '/exams';
+    final data = await get(path);
+    return data is List ? data : [];
+  }
+
+  Future<Map<String, dynamic>> getExam(int id) async {
+    return Map<String, dynamic>.from(await get('/exams/$id') as Map);
+  }
+
+  Future<Map<String, dynamic>> submitExam(int id, List<dynamic> answers, int timeTaken) async {
+    return Map<String, dynamic>.from(await post('/exams/$id/submit', {
+      'answers': answers,
+      'timeTakenSeconds': timeTaken,
+    }) as Map);
+  }
+
+  Future<Map<String, dynamic>> submitAssignment(int id, {String? content, List<int>? fileBytes, String? fileName}) async {
+    final uri = Uri.parse('$baseUrl/assignments/$id/submit');
+    final request = http.MultipartRequest('POST', uri);
+    if (_token != null) request.headers['Authorization'] = 'Bearer $_token';
+    if (content != null && content.isNotEmpty) request.fields['content'] = content;
+    if (fileBytes != null && fileName != null) {
+      request.files.add(http.MultipartFile.fromBytes('file', fileBytes, filename: fileName));
+    }
+    final streamed = await request.send().timeout(const Duration(seconds: 30));
+    final res = await http.Response.fromStream(streamed);
+    return Map<String, dynamic>.from(_handleResponse(res) as Map);
+  }
+
+  Future<List<dynamic>> getNotifications() async {
+    final data = await get('/analytics/notifications');
+    return data is List ? data : [];
+  }
+
+  Future<void> markNotificationRead(int id) async {
+    await http.put(
+      Uri.parse('$baseUrl/analytics/notifications/$id/read'),
+      headers: _headers,
+    );
+  }
 }

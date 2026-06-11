@@ -22,7 +22,34 @@ async function getCourse(req, res) {
       'SELECT id, title, order_index, duration_minutes FROM lessons WHERE course_id = ? ORDER BY order_index',
       [course.id]
     );
-    res.json({ ...course, lessons });
+    const quizzes = await db.query(
+      'SELECT id, title, time_limit_minutes, passing_score FROM quizzes WHERE course_id = ? ORDER BY created_at',
+      [course.id]
+    );
+    const exams = await db.query(
+      req.user?.role === 'admin'
+        ? 'SELECT id, title, time_limit_minutes, passing_score, is_published FROM exams WHERE course_id = ? ORDER BY created_at'
+        : 'SELECT id, title, time_limit_minutes, passing_score FROM exams WHERE course_id = ? AND is_published = TRUE ORDER BY created_at',
+      [course.id]
+    );
+    const assignments = await db.query(
+      'SELECT id, title, description, due_date, max_score FROM assignments WHERE course_id = ? ORDER BY created_at DESC',
+      [course.id]
+    );
+
+    let enrollment = null;
+    if (req.user?.role === 'student') {
+      const [student] = await db.query('SELECT id FROM students WHERE user_id = ?', [req.user.id]);
+      if (student) {
+        const [row] = await db.query(
+          'SELECT id, progress_percent, enrolled_at, completed_at FROM enrollments WHERE student_id = ? AND course_id = ?',
+          [student.id, course.id]
+        );
+        enrollment = row || null;
+      }
+    }
+
+    res.json({ ...course, lessons, quizzes, exams, assignments, enrollment });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

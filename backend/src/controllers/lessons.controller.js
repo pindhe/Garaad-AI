@@ -76,6 +76,7 @@ async function completeLesson(req, res) {
           [student.id, lesson.course_id]
         );
       }
+      await db.query('UPDATE students SET total_xp = total_xp + 10 WHERE id = ?', [student.id]);
     }
 
     res.json({ message: 'Lesson completed' });

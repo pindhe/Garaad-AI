@@ -115,6 +115,36 @@ async function markNotificationRead(req, res) {
   }
 }
 
+async function getSettings(req, res) {
+  try {
+    const rows = await db.query('SELECT setting_key, setting_value FROM system_settings ORDER BY setting_key');
+    const settings = {};
+    rows.forEach((r) => { settings[r.setting_key] = r.setting_value; });
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+async function updateSettings(req, res) {
+  try {
+    const { settings } = req.body;
+    if (!settings || typeof settings !== 'object') {
+      return res.status(400).json({ error: 'Settings object required' });
+    }
+    for (const [key, value] of Object.entries(settings)) {
+      await db.query(
+        `INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = ?`,
+        [key, String(value), String(value)]
+      );
+    }
+    res.json({ message: 'Settings updated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   getDashboard,
   getStudentProgress,
@@ -122,4 +152,6 @@ module.exports = {
   createAnnouncement,
   getNotifications,
   markNotificationRead,
+  getSettings,
+  updateSettings,
 };

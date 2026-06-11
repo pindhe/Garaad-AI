@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import { api, Course } from '@/lib/api';
 
@@ -103,12 +104,17 @@ export default function CoursesPage() {
                 >
                   {c.is_published ? 'Published' : 'Draft'}
                 </span>
-                <button
-                  onClick={() => togglePublish(c.id, c.is_published)}
-                  className="text-sm text-blue-600 hover:underline"
-                >
-                  {c.is_published ? 'Unpublish' : 'Publish'}
-                </button>
+                <div className="flex gap-3">
+                  <Link href={`/courses/${c.id}`} className="text-sm text-blue-600 hover:underline">
+                    Manage
+                  </Link>
+                  <button
+                    onClick={() => togglePublish(c.id, c.is_published)}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    {c.is_published ? 'Unpublish' : 'Publish'}
+                  </button>
+                </div>
               </div>
             </div>
           ))
