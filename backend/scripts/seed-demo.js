@@ -70,6 +70,7 @@ async function seedDemo() {
 }
 
 seedDemo().catch((err) => {
-  console.error(err.message);
+  console.error('Demo seed failed:', err.message || err);
+  console.error('Make sure XAMPP MySQL is running, then run: npm run db:init && npm run seed:demo');
   process.exit(1);
 });
