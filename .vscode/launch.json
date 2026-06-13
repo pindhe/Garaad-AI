@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "MacallinAI Mobile (Chrome)",
+      "cwd": "mobile",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--dart-define=API_URL=http://localhost:5000"
+      ],
+      "deviceId": "chrome"
+    },
+    {
+      "name": "MacallinAI Mobile (Auto reload)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/mobile"
+    }
+  ]
+}
