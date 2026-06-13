@@ -55,6 +55,23 @@ async function getCourse(req, res) {
           [student.id, course.id]
         );
         enrollment = row || null;
+
+        if (lessons.length) {
+          const lessonIds = lessons.map((l) => l.id);
+          const placeholders = lessonIds.map(() => '?').join(',');
+          const progressRows = await db.query(
+            `SELECT lesson_id, is_completed FROM lesson_progress
+             WHERE student_id = ? AND lesson_id IN (${placeholders})`,
+            [student.id, ...lessonIds]
+          );
+          const completedMap = {};
+          progressRows.forEach((p) => {
+            completedMap[p.lesson_id] = p.is_completed === true || p.is_completed === 1;
+          });
+          lessons.forEach((l) => {
+            l.completed = completedMap[l.id] === true;
+          });
+        }
       }
     }
 

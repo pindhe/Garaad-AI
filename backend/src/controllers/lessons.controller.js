@@ -15,6 +15,12 @@ async function getLesson(req, res) {
     const [course] = await db.query('SELECT id, title, subject FROM courses WHERE id = ?', [lesson.course_id]);
     if (course) lesson.course = course;
 
+    const [nextLesson] = await db.query(
+      'SELECT id, title FROM lessons WHERE course_id = ? AND order_index > ? ORDER BY order_index ASC LIMIT 1',
+      [lesson.course_id, lesson.order_index ?? 0]
+    );
+    lesson.next_lesson = nextLesson || null;
+
     if (req.user?.role === 'student') {
       const [student] = await db.query('SELECT id FROM students WHERE user_id = ?', [req.user.id]);
       if (student) {
