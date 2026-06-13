@@ -127,7 +127,23 @@ class _AssignmentScreenState extends State<AssignmentScreen> {
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(children: [Icon(Icons.check_circle_rounded, color: Color(0xFF10B981)), SizedBox(width: 8), Text('Graded!')]),
-            content: Text('Score: ${result['score'] ?? '—'}/100\n\n${result['feedback'] ?? ''}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Score: ${result['score'] ?? '—'}/100', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.primary)),
+                if (result['demoMode'] == true) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                    child: const Text('Demo grading — set OPENAI_API_KEY in backend/.env for AI feedback', style: TextStyle(fontSize: 12, color: AppColors.accent)),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Text(result['feedback']?.toString() ?? ''),
+              ],
+            ),
             actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done'))],
           ),
         );
