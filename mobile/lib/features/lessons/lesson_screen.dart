@@ -59,10 +59,33 @@ class _LessonScreenState extends State<LessonScreen> {
       _error = e.toString().replaceAll('Exception: ', '');
     }
     if (mounted) setState(() => _loading = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients && _scrollController.position.maxScrollExtent <= 0) {
+        setState(() => _readProgress = 1);
+      }
+    });
   }
 
   bool get _completed {
     return _lesson?['completed'] == true || _lesson?['completed'] == 1;
+  }
+
+  bool get _hasNext {
+    final next = _lesson?['next_lesson'];
+    if (next is Map && next['id'] != null) return true;
+    return false;
+  }
+
+  bool get _canComplete => _completed || _readProgress >= 0.85;
+
+  Future<void> _goNext() async {
+    if (!_completed) return;
+    final next = _lesson?['next_lesson'];
+    if (next is Map && next['id'] != null) {
+      await Navigator.pushReplacementNamed(context, '/lesson', arguments: next['id']);
+    } else {
+      if (mounted) Navigator.pop(context, true);
+    }
   }
 
   Future<void> _complete() async {
@@ -76,7 +99,7 @@ class _LessonScreenState extends State<LessonScreen> {
           _completing = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lesson complete! +10 XP earned')),
+          SnackBar(content: Text(_hasNext ? 'Step complete! Tap Next to continue.' : 'Last lesson complete! Tap Finish.')),
         );
       }
     } catch (e) {
@@ -304,7 +327,11 @@ class _LessonScreenState extends State<LessonScreen> {
             completed: _completed,
             completing: _completing,
             readProgress: _readProgress,
+            canComplete: _canComplete,
+            hasNext: _hasNext,
+            nextTitle: _lesson?['next_lesson'] is Map ? (_lesson!['next_lesson']['title']?.toString()) : null,
             onComplete: _complete,
+            onNext: _goNext,
           ),
         ],
       ),
@@ -336,13 +363,21 @@ class _BottomBar extends StatelessWidget {
   final bool completed;
   final bool completing;
   final double readProgress;
+  final bool canComplete;
+  final bool hasNext;
+  final String? nextTitle;
   final VoidCallback onComplete;
+  final VoidCallback onNext;
 
   const _BottomBar({
     required this.completed,
     required this.completing,
     required this.readProgress,
+    required this.canComplete,
+    required this.hasNext,
+    this.nextTitle,
     required this.onComplete,
+    required this.onNext,
   });
 
   @override
@@ -363,23 +398,42 @@ class _BottomBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(completed ? 'Completed' : 'Mark when finished', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                Text(completed ? '+10 XP earned' : '${(readProgress * 100).toStringAsFixed(0)}% read', style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                Text(
+                  completed ? 'Step complete!' : (canComplete ? 'Ready to complete' : 'Read to the end'),
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                Text(
+                  completed
+                      ? (hasNext ? 'Next: ${nextTitle ?? 'lesson'}' : 'All lessons done')
+                      : '${(readProgress * 100).toStringAsFixed(0)}% read${canComplete ? '' : ' · scroll to end'}',
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 12),
-          FilledButton.icon(
-            onPressed: completed || completing ? null : onComplete,
-            icon: completing
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Icon(completed ? Icons.check_circle_rounded : Icons.check_rounded, size: 20),
-            label: Text(completed ? 'Done' : 'Complete'),
-            style: FilledButton.styleFrom(
-              backgroundColor: completed ? const Color(0xFF10B981) : AppColors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          if (completed)
+            FilledButton.icon(
+              onPressed: onNext,
+              icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+              label: Text(hasNext ? 'Next' : 'Finish'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+            )
+          else
+            FilledButton.icon(
+              onPressed: (completing || !canComplete) ? null : onComplete,
+              icon: completing
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.check_rounded, size: 20),
+              label: const Text('Complete'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
             ),
-          ),
         ],
       ),
     );
