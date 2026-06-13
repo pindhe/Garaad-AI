@@ -76,6 +76,18 @@ async function logAiAction(userId, action, usage, model, requestData, responseSu
 }
 
 async function chat(messages, userId, context = {}) {
+  if (!isOpenAiConfigured()) {
+    const last = messages.filter((m) => m.role === 'user').pop();
+    return {
+      content:
+        'AI Teacher is in demo mode (OpenAI not configured). ' +
+        `You asked: "${last?.content || ''}". ` +
+        'Add a valid OPENAI_API_KEY to backend/.env for live answers.',
+      usage: null,
+      demoMode: true,
+    };
+  }
+
   const client = getClient();
   if (!client) throw new Error('OpenAI API key not configured');
   if (!(await isAiEnabled())) throw new Error('AI Teacher is currently disabled');
@@ -86,17 +98,39 @@ async function chat(messages, userId, context = {}) {
     ...messages,
   ];
 
-  const response = await client.chat.completions.create({
-    model: config.openai.model,
-    messages: fullMessages,
-    temperature: 0.7,
-    max_tokens: 2000,
-  });
+  try {
+    const response = await client.chat.completions.create({
+      model: config.openai.model,
+      messages: fullMessages,
+      temperature: 0.7,
+      max_tokens: 2000,
+    });
 
-  const content = response.choices[0].message.content;
-  await logAiAction(userId, 'chat', response.usage, config.openai.model, { context }, content);
+    const content = response.choices[0].message.content;
+    await logAiAction(userId, 'chat', response.usage, config.openai.model, { context }, content);
 
-  return { content, usage: response.usage };
+    return { content, usage: response.usage };
+  } catch (err) {
+    const msg = err.message || String(err);
+    if (/429|quota|rate limit|billing/i.test(msg)) {
+      console.warn('[ai.service] OpenAI chat quota/rate limit:', msg.slice(0, 120));
+      return {
+        content:
+          'AI Teacher is temporarily unavailable — your OpenAI account quota or rate limit was exceeded. ' +
+          'Check billing at https://platform.openai.com/account/billing or try again later.',
+        usage: null,
+        demoMode: true,
+      };
+    }
+    if (config.nodeEnv === 'development' || /401|API key|Incorrect API key/i.test(msg)) {
+      return {
+        content: 'AI Teacher demo mode: OpenAI request failed. Check OPENAI_API_KEY in backend/.env.',
+        usage: null,
+        demoMode: true,
+      };
+    }
+    throw err;
+  }
 }
 
 async function generateCourse(subject, level, topics, userId) {
@@ -220,7 +254,7 @@ Return valid JSON:
     return JSON.parse(content);
   } catch (err) {
     const msg = err.message || String(err);
-    if (config.nodeEnv === 'development' || /401|API key|Incorrect API key/i.test(msg)) {
+    if (config.nodeEnv === 'development' || /401|429|quota|API key|Incorrect API key|rate limit/i.test(msg)) {
       console.warn('[ai.service] OpenAI grading unavailable, using demo grader:', msg.slice(0, 120));
       return gradeSubmissionLocal(submissionContent, rubric, maxScore);
     }
@@ -228,9 +262,44 @@ Return valid JSON:
   }
 }
 
+function gradeQuizAnswersLocal(questions, studentAnswers) {
+  let correct = 0;
+  const details = [];
+
+  questions.forEach((q, i) => {
+    const expected = q.correct_answer;
+    const ans = studentAnswers[i];
+    const isCorrect = expected !== undefined && ans === expected;
+    if (isCorrect) correct += 1;
+    details.push({
+      question_index: i,
+      correct: isCorrect,
+      explanation: isCorrect ? 'Correct answer!' : 'Review this topic in the lesson.',
+    });
+  });
+
+  const total = questions.length;
+  const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+  return {
+    score,
+    total: 100,
+    correct_count: correct,
+    feedback:
+      `You scored ${correct}/${total} (${score}%). ` +
+      (score >= 70 ? 'Great work!' : 'Keep studying and try again.'),
+    details,
+    demoMode: true,
+  };
+}
+
 async function gradeQuizAnswers(questions, studentAnswers, userId) {
+  if (!isOpenAiConfigured()) {
+    return gradeQuizAnswersLocal(questions, studentAnswers);
+  }
+
   const client = getClient();
-  if (!client) throw new Error('OpenAI API key not configured');
+  if (!client) return gradeQuizAnswersLocal(questions, studentAnswers);
 
   const prompt = `Grade these quiz answers. Questions: ${JSON.stringify(questions)}
 Student answers: ${JSON.stringify(studentAnswers)}
@@ -244,17 +313,26 @@ Return valid JSON:
   "details": [{"question_index": 0, "correct": true, "explanation": "..."}]
 }`;
 
-  const response = await client.chat.completions.create({
-    model: config.openai.model,
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.2,
-    response_format: { type: 'json_object' },
-  });
+  try {
+    const response = await client.chat.completions.create({
+      model: config.openai.model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+    });
 
-  const content = response.choices[0].message.content;
-  await logAiAction(userId, 'grade_quiz', response.usage, config.openai.model, {}, content);
+    const content = response.choices[0].message.content;
+    await logAiAction(userId, 'grade_quiz', response.usage, config.openai.model, {}, content);
 
-  return JSON.parse(content);
+    return JSON.parse(content);
+  } catch (err) {
+    const msg = err.message || String(err);
+    if (config.nodeEnv === 'development' || /401|429|quota|API key|Incorrect API key|rate limit/i.test(msg)) {
+      console.warn('[ai.service] OpenAI quiz grading fallback:', msg.slice(0, 120));
+      return gradeQuizAnswersLocal(questions, studentAnswers);
+    }
+    throw err;
+  }
 }
 
 function newSessionId() {

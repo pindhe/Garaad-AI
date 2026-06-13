@@ -1,4 +1,5 @@
 import { LucideIcon } from 'lucide-react';
+import { adminCard } from '@/lib/admin-ui';
 
 interface StatCardProps {
   title: string;
@@ -11,15 +12,15 @@ interface StatCardProps {
 
 export default function StatCard({ title, value, icon: Icon, color, change, subtitle }: StatCardProps) {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+    <div className={`group relative overflow-hidden p-6 transition-shadow hover:shadow-md dark:shadow-none dark:hover:shadow-lg dark:hover:shadow-black/20 ${adminCard}`}>
       <div className={`pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-10 ${color}`} />
       <div className="relative flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className="mt-2 truncate text-3xl font-bold tracking-tight text-slate-900">{value}</p>
-          {subtitle && <p className="mt-1 text-xs text-slate-400">{subtitle}</p>}
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
+          <p className="mt-2 truncate text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{value}</p>
+          {subtitle && <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{subtitle}</p>}
           {change && (
-            <p className="mt-2 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+            <p className="mt-2 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">
               {change}
             </p>
           )}

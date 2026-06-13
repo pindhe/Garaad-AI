@@ -12,15 +12,23 @@ interface AdminContextValue {
 }
 
 const AdminContext = createContext<AdminContextValue | null>(null);
+const SIDEBAR_KEY = 'macallin-admin-sidebar-collapsed';
 
 export function AdminProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsedState] = useState(false);
 
   useEffect(() => {
     auth.me().then(setUser).catch(() => setUser(null));
+    const stored = localStorage.getItem(SIDEBAR_KEY);
+    if (stored === 'true') setSidebarCollapsedState(true);
   }, []);
+
+  function setSidebarCollapsed(collapsed: boolean) {
+    setSidebarCollapsedState(collapsed);
+    localStorage.setItem(SIDEBAR_KEY, String(collapsed));
+  }
 
   return (
     <AdminContext.Provider
