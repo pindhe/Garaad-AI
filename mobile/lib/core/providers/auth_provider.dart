@@ -33,12 +33,14 @@ class AuthProvider extends ChangeNotifier {
     required String password,
     required String firstName,
     required String lastName,
+    String? gradeLevel,
   }) async {
     await _api.register(
       email: email,
       password: password,
       firstName: firstName,
       lastName: lastName,
+      gradeLevel: gradeLevel,
     );
     await login(email, password);
   }

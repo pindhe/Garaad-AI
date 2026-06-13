@@ -106,6 +106,7 @@ class ApiService {
     required String password,
     required String firstName,
     required String lastName,
+    String? gradeLevel,
   }) async {
     return Map<String, dynamic>.from(await post('/auth/register', {
       'email': email,
@@ -113,6 +114,7 @@ class ApiService {
       'firstName': firstName,
       'lastName': lastName,
       'role': 'student',
+      if (gradeLevel != null) 'gradeLevel': gradeLevel,
     }) as Map);
   }
 

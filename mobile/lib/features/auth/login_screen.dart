@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/public_api.dart';
 import '../../../core/theme/app_theme.dart';
+import 'widgets/auth_form_widgets.dart';
 import 'widgets/login_3d_scene.dart';
 import 'widgets/login_stats_strip.dart';
 
@@ -153,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         ..setEntry(3, 2, 0.001)
                         ..rotateX(tilt)
                         ..rotateY(-tilt * 0.5),
-                      child: _GlassLoginCard(
+                      child: GlassAuthCard(
                         isDark: isDark,
                         child: Form(
                           key: _formKey,
@@ -177,8 +178,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               const SizedBox(height: 20),
                               LoginStatsStrip(stats: _stats, apiOnline: _apiOnline),
                               const SizedBox(height: 24),
-                              if (_error != null) _ErrorBanner(message: _error!),
-                              _AnimatedField(
+                              if (_error != null) AuthErrorBanner(message: _error!),
+                              AuthAnimatedField(
                                 delay: 100,
                                 child: TextFormField(
                                   controller: _emailController,
@@ -194,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              _AnimatedField(
+                              AuthAnimatedField(
                                 delay: 200,
                                 child: TextFormField(
                                   controller: _passwordController,
@@ -234,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 ],
                               ),
                               const SizedBox(height: 20),
-                              _GradientButton(
+                              AuthGradientButton(
                                 loading: _loading,
                                 onPressed: _login,
                                 label: 'Sign In',
@@ -263,136 +264,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GlassLoginCard extends StatelessWidget {
-  final bool isDark;
-  final Widget child;
-
-  const _GlassLoginCard({required this.isDark, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface.withValues(alpha: 0.92) : Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: isDark ? Colors.white12 : Colors.white.withValues(alpha: 0.8)),
-        boxShadow: [
-          BoxShadow(color: AppColors.primary.withValues(alpha: 0.12), blurRadius: 40, offset: const Offset(0, 20)),
-          BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08), blurRadius: 24, offset: const Offset(0, 8)),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  final String message;
-  const _ErrorBanner({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 20),
-          const SizedBox(width: 10),
-          Expanded(child: Text(message, style: const TextStyle(color: Colors.redAccent, fontSize: 13))),
-        ],
-      ),
-    );
-  }
-}
-
-class _AnimatedField extends StatefulWidget {
-  final Widget child;
-  final int delay;
-  const _AnimatedField({required this.child, required this.delay});
-
-  @override
-  State<_AnimatedField> createState() => _AnimatedFieldState();
-}
-
-class _AnimatedFieldState extends State<_AnimatedField> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
-    Future.delayed(Duration(milliseconds: widget.delay), () {
-      if (mounted) _ctrl.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _anim,
-      child: SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(_anim),
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-class _GradientButton extends StatelessWidget {
-  final bool loading;
-  final VoidCallback onPressed;
-  final String label;
-
-  const _GradientButton({required this.loading, required this.onPressed, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      borderRadius: BorderRadius.circular(14),
-      elevation: 0,
-      child: InkWell(
-        onTap: loading ? null : onPressed,
-        borderRadius: BorderRadius.circular(14),
-        child: Ink(
-          height: 54,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            gradient: LinearGradient(
-              colors: loading
-                  ? [Colors.grey.shade400, Colors.grey.shade500]
-                  : [AppColors.primary, const Color(0xFF1D4ED8)],
-            ),
-            boxShadow: [
-              if (!loading)
-                BoxShadow(color: AppColors.primary.withValues(alpha: 0.4), blurRadius: 16, offset: const Offset(0, 8)),
-            ],
-          ),
-          child: Center(
-            child: loading
-                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                : Text(label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
           ),
         ),
       ),

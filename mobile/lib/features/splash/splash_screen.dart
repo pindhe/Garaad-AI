@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/onboarding_service.dart';
 import '../../../core/theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -21,8 +22,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
 
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) Navigator.pushReplacementNamed(context, '/onboarding');
+    Future.delayed(const Duration(seconds: 2), () async {
+      if (!mounted) return;
+      final done = await OnboardingService.isCompleted();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, done ? '/login' : '/onboarding');
     });
   }
 

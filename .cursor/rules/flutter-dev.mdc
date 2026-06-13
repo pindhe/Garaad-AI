@@ -1,0 +1,11 @@
+---
+description: Flutter mobile development workflow
+globs: mobile/**
+---
+
+# Mobile dev workflow
+
+- Do NOT run `flutter run` on every small change.
+- The user runs `npm run dev` in `mobile/` once — it auto hot-reloads when `lib/` files change.
+- After editing mobile Dart files, changes appear automatically; no need to restart Flutter.
+- Backend must stay running: `cd backend && npm run dev`
