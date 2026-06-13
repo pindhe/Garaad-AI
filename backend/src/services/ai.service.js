@@ -5,8 +5,39 @@ const db = require('../config/database');
 
 let openai = null;
 
+const PLACEHOLDER_KEY_PATTERN = /your.*key|sk-your|placeholder|change-me|xxx/i;
+
+function isOpenAiConfigured() {
+  const key = config.openai.apiKey;
+  if (!key || key.trim().length < 20) return false;
+  if (PLACEHOLDER_KEY_PATTERN.test(key)) return false;
+  return true;
+}
+
+function gradeSubmissionLocal(submissionContent, rubric, maxScore) {
+  const text = submissionContent.trim();
+  const len = text.length;
+  let score = Math.min(maxScore, Math.round(maxScore * 0.55));
+  if (len > 80) score = Math.min(maxScore, Math.round(maxScore * 0.68));
+  if (len > 250) score = Math.min(maxScore, Math.round(maxScore * 0.8));
+  if (len > 600) score = Math.min(maxScore, Math.round(maxScore * 0.9));
+
+  return {
+    score,
+    feedback:
+      `Your submission was received (${len} characters).\n\n` +
+      'Demo grading is active because OpenAI is not configured. ' +
+      'Add a valid OPENAI_API_KEY to backend/.env for full AI feedback.\n\n' +
+      `Assignment criteria: ${(rubric || 'Complete the task clearly.').slice(0, 300)}`,
+    strengths: len > 120 ? ['Provided detailed written work'] : ['Submission recorded successfully'],
+    improvements: ['Configure OPENAI_API_KEY in backend/.env for AI-powered grading'],
+    demoMode: true,
+  };
+}
+
 function getClient() {
-  if (!openai && config.openai.apiKey) {
+  if (!isOpenAiConfigured()) return null;
+  if (!openai) {
     openai = new OpenAI({ apiKey: config.openai.apiKey });
   }
   return openai;
@@ -153,8 +184,12 @@ Return valid JSON:
 }
 
 async function gradeSubmission(submissionContent, rubric, maxScore, userId) {
+  if (!isOpenAiConfigured()) {
+    return gradeSubmissionLocal(submissionContent, rubric, maxScore);
+  }
+
   const client = getClient();
-  if (!client) throw new Error('OpenAI API key not configured');
+  if (!client) return gradeSubmissionLocal(submissionContent, rubric, maxScore);
 
   const prompt = `Grade this student submission out of ${maxScore}.
 
@@ -171,17 +206,26 @@ Return valid JSON:
   "improvements": ["improvement1"]
 }`;
 
-  const response = await client.chat.completions.create({
-    model: config.openai.model,
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.3,
-    response_format: { type: 'json_object' },
-  });
+  try {
+    const response = await client.chat.completions.create({
+      model: config.openai.model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
+    });
 
-  const content = response.choices[0].message.content;
-  await logAiAction(userId, 'grade', response.usage, config.openai.model, { maxScore }, content);
+    const content = response.choices[0].message.content;
+    await logAiAction(userId, 'grade', response.usage, config.openai.model, { maxScore }, content);
 
-  return JSON.parse(content);
+    return JSON.parse(content);
+  } catch (err) {
+    const msg = err.message || String(err);
+    if (config.nodeEnv === 'development' || /401|API key|Incorrect API key/i.test(msg)) {
+      console.warn('[ai.service] OpenAI grading unavailable, using demo grader:', msg.slice(0, 120));
+      return gradeSubmissionLocal(submissionContent, rubric, maxScore);
+    }
+    throw err;
+  }
 }
 
 async function gradeQuizAnswers(questions, studentAnswers, userId) {

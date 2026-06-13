@@ -6,11 +6,27 @@ async function getLesson(req, res) {
     if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
 
     if (lesson.examples && typeof lesson.examples === 'string') {
-      lesson.examples = JSON.parse(lesson.examples);
+      try { lesson.examples = JSON.parse(lesson.examples); } catch { lesson.examples = []; }
     }
     if (lesson.slides && typeof lesson.slides === 'string') {
-      lesson.slides = JSON.parse(lesson.slides);
+      try { lesson.slides = JSON.parse(lesson.slides); } catch { lesson.slides = []; }
     }
+
+    const [course] = await db.query('SELECT id, title, subject FROM courses WHERE id = ?', [lesson.course_id]);
+    if (course) lesson.course = course;
+
+    if (req.user?.role === 'student') {
+      const [student] = await db.query('SELECT id FROM students WHERE user_id = ?', [req.user.id]);
+      if (student) {
+        const [prog] = await db.query(
+          'SELECT is_completed, completed_at FROM lesson_progress WHERE student_id = ? AND lesson_id = ?',
+          [student.id, lesson.id]
+        );
+        lesson.completed = prog?.is_completed === true || prog?.is_completed === 1;
+        lesson.completed_at = prog?.completed_at || null;
+      }
+    }
+
     res.json(lesson);
   } catch (err) {
     res.status(500).json({ error: err.message });

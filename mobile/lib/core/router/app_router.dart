@@ -14,6 +14,7 @@ import '../../features/exams/exam_screen.dart';
 import '../../features/results/results_screen.dart';
 import '../../features/certificates/certificates_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
+import '../../features/subscription/subscription_screen.dart';
 import '../../shared/widgets/loading_screen.dart';
 
 class AppRouter {
@@ -60,6 +61,8 @@ class AppRouter {
         return _slide(const CertificatesScreen(), settings);
       case '/notifications':
         return _slide(const NotificationsScreen(), settings);
+      case '/subscription':
+        return _slide(const SubscriptionScreen(), settings);
       default:
         return _fade(const SplashScreen(), settings);
     }

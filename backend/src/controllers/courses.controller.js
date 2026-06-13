@@ -37,6 +37,15 @@ async function getCourse(req, res) {
       [course.id]
     );
 
+    let enrollmentCount = 0;
+    if (req.user?.role === 'admin') {
+      const [{ count }] = await db.query(
+        'SELECT COUNT(*) AS count FROM enrollments WHERE course_id = ?',
+        [course.id]
+      );
+      enrollmentCount = count;
+    }
+
     let enrollment = null;
     if (req.user?.role === 'student') {
       const [student] = await db.query('SELECT id FROM students WHERE user_id = ?', [req.user.id]);
@@ -49,7 +58,7 @@ async function getCourse(req, res) {
       }
     }
 
-    res.json({ ...course, lessons, quizzes, exams, assignments, enrollment });
+    res.json({ ...course, lessons, quizzes, exams, assignments, enrollmentCount, enrollment });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

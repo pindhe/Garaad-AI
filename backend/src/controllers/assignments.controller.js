@@ -7,6 +7,30 @@ const config = require('../config');
 async function listAssignments(req, res) {
   try {
     const courseId = req.query.courseId;
+
+    if (req.user.role === 'student') {
+      const [student] = await db.query('SELECT id FROM students WHERE user_id = ?', [req.user.id]);
+      if (!student) return res.json([]);
+
+      const params = [student.id];
+      let sql = `
+        SELECT a.*, c.title AS course_title,
+               s.id AS submission_id, s.status AS submission_status,
+               s.score AS submission_score, s.ai_feedback AS submission_feedback,
+               s.submitted_at AS submission_submitted_at
+        FROM assignments a
+        LEFT JOIN courses c ON c.id = a.course_id
+        LEFT JOIN submissions s ON s.assignment_id = a.id AND s.student_id = ?
+      `;
+      if (courseId) {
+        sql += ' WHERE a.course_id = ?';
+        params.push(courseId);
+      }
+      sql += ' ORDER BY a.due_date ASC, a.created_at DESC';
+      const assignments = await db.query(sql, params);
+      return res.json(assignments);
+    }
+
     const sql = courseId
       ? 'SELECT * FROM assignments WHERE course_id = ? ORDER BY created_at DESC'
       : 'SELECT * FROM assignments ORDER BY created_at DESC';
@@ -49,12 +73,21 @@ async function submitAssignment(req, res) {
 
     const submissionContent = content || (fileUrl ? `File submitted: ${fileUrl}` : '');
     if (submissionContent) {
-      const grade = await aiService.gradeSubmission(
-        submissionContent,
-        assignment.description || 'Grade based on completeness and accuracy',
-        assignment.max_score,
-        req.user.id
-      );
+      let grade;
+      try {
+        grade = await aiService.gradeSubmission(
+          submissionContent,
+          assignment.description || 'Grade based on completeness and accuracy',
+          assignment.max_score,
+          req.user.id
+        );
+      } catch (err) {
+        console.error('[assignments] grading failed:', err.message);
+        grade = {
+          score: Math.min(assignment.max_score || 100, 70),
+          feedback: 'Submitted successfully. AI grading is temporarily unavailable — check OPENAI_API_KEY in backend/.env.',
+        };
+      }
       await db.query(
         'UPDATE submissions SET score = ?, ai_feedback = ?, status = ?, graded_at = NOW() WHERE id = ?',
         [grade.score, grade.feedback, 'graded', result.insertId]

@@ -130,7 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-                TextButton(onPressed: () {}, child: const Text('Upgrade')),
+                TextButton(onPressed: () => Navigator.pushNamed(context, '/subscription'), child: const Text('Upgrade')),
               ],
             ),
           ),

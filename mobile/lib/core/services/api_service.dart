@@ -62,6 +62,24 @@ class ApiService {
     }
   }
 
+  Future<dynamic> put(String path, Map<String, dynamic> body) async {
+    try {
+      final res = await http
+          .put(
+            Uri.parse('$baseUrl$path'),
+            headers: _headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse(res);
+    } catch (e) {
+      if (e is Exception && !e.toString().contains('ClientException') && !e.toString().contains('SocketException')) {
+        rethrow;
+      }
+      throw Exception(_networkMessage(e));
+    }
+  }
+
   String _networkMessage(Object e) {
     final msg = e.toString();
     if (msg.contains('Failed to fetch') || msg.contains('SocketException') || msg.contains('Connection refused')) {
@@ -221,5 +239,14 @@ class ApiService {
       Uri.parse('$baseUrl/analytics/notifications/$id/read'),
       headers: _headers,
     );
+  }
+
+  Future<List<dynamic>> getSubscriptions() async {
+    final data = await get('/analytics/subscriptions');
+    return data is List ? data : [];
+  }
+
+  Future<Map<String, dynamic>> updateSubscription(String planType) async {
+    return Map<String, dynamic>.from(await put('/students/subscription', {'planType': planType}) as Map);
   }
 }

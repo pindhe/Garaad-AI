@@ -113,6 +113,7 @@ class AppDrawer extends StatelessWidget {
                   _DrawerItem(icon: Icons.assignment_rounded, label: 'Assignments', onTap: () { Navigator.pop(context); onAssignments(); }),
                   _DrawerItem(icon: Icons.workspace_premium_rounded, label: 'Certificates', onTap: () { Navigator.pop(context); onCertificates(); }),
                   _DrawerItem(icon: Icons.notifications_rounded, label: 'Notifications', onTap: () { Navigator.pop(context); onNotifications(); }),
+                  _DrawerItem(icon: Icons.star_rounded, label: 'Subscription', onTap: () { Navigator.pop(context); Navigator.pushNamed(context, '/subscription'); }),
                 ],
               ),
             ),

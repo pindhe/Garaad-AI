@@ -102,4 +102,39 @@ async function getMyProgress(req, res) {
   }
 }
 
-module.exports = { listStudents, getStudent, updateStudent, deleteStudent, getMyProgress };
+async function updateSubscription(req, res) {
+  try {
+    const { planType } = req.body;
+    if (!planType) return res.status(400).json({ error: 'planType is required' });
+
+    const [plan] = await db.query(
+      'SELECT * FROM subscriptions WHERE plan_type = ? AND is_active = TRUE',
+      [planType]
+    );
+    if (!plan) return res.status(400).json({ error: 'Invalid subscription plan' });
+
+    const [student] = await db.query('SELECT id FROM students WHERE user_id = ?', [req.user.id]);
+    if (!student) return res.status(404).json({ error: 'Student profile not found' });
+
+    await db.query('UPDATE students SET subscription_plan = ? WHERE user_id = ?', [planType, req.user.id]);
+
+    if (Number(plan.price_monthly) > 0) {
+      await db.query(
+        `INSERT INTO payments (student_id, subscription_id, amount, status, payment_method)
+         VALUES (?, ?, ?, 'completed', 'demo')`,
+        [student.id, plan.id, plan.price_monthly]
+      );
+    }
+
+    res.json({
+      message: 'Subscription updated',
+      planType,
+      planName: plan.name,
+      priceMonthly: plan.price_monthly,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+module.exports = { listStudents, getStudent, updateStudent, deleteStudent, getMyProgress, updateSubscription };
