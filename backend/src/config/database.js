@@ -13,8 +13,12 @@ const pool = mysql.createPool({
   enableKeepAlive: true,
 });
 
+function sanitizeParams(params) {
+  return params.map((value) => (value === undefined ? null : value));
+}
+
 async function query(sql, params = []) {
-  const [rows] = await pool.execute(sql, params);
+  const [rows] = await pool.execute(sql, sanitizeParams(params));
   return rows;
 }
 
