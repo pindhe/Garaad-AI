@@ -350,6 +350,18 @@ class _DashboardHeader extends StatelessWidget {
           children: [
             Row(
               children: [
+                Builder(
+                  builder: (ctx) => IconButton(
+                    onPressed: () {
+                      final scaffold = Scaffold.maybeOf(ctx);
+                      if (scaffold?.hasDrawer ?? false) scaffold!.openDrawer();
+                    },
+                    icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                    tooltip: 'Menu',
+                    style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.15)),
+                  ),
+                ),
+                const SizedBox(width: 4),
                 Text(dateStr, style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 13)),
                 const Spacer(),
                 Stack(

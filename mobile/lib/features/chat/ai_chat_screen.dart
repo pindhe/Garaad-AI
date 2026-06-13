@@ -8,10 +8,10 @@ class AiChatScreen extends StatefulWidget {
   const AiChatScreen({super.key, this.embedded = false});
 
   @override
-  State<AiChatScreen> createState() => _AiChatScreenState();
+  State<AiChatScreen> createState() => AiChatScreenState();
 }
 
-class _AiChatScreenState extends State<AiChatScreen> {
+class AiChatScreenState extends State<AiChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   final _messages = <Map<String, String>>[];
@@ -22,7 +22,16 @@ class _AiChatScreenState extends State<AiChatScreen> {
     'Explain photosynthesis simply',
     'Help me with algebra',
     'Create a study plan for exams',
+    'Summarize World War II',
   ];
+
+  void clearChat() {
+    setState(() {
+      _messages.clear();
+      _sessionId = null;
+      _loading = false;
+    });
+  }
 
   Future<void> _send([String? text]) async {
     final message = (text ?? _controller.text).trim();
@@ -77,87 +86,23 @@ class _AiChatScreenState extends State<AiChatScreen> {
     });
   }
 
-  Widget _buildChat() {
-    return Column(
-      children: [
-        Expanded(
-          child: _messages.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.smart_toy_rounded, size: 48, color: AppColors.primary),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text('Your AI Teacher', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Ask anything — get step-by-step explanations',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(height: 24),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          alignment: WrapAlignment.center,
-                          children: _suggestions
-                              .map((s) => ActionChip(
-                                    label: Text(s, style: const TextStyle(fontSize: 12)),
-                                    onPressed: () => _send(s),
-                                  ))
-                              .toList(),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _messages.length,
-                  itemBuilder: (_, i) => _ChatBubble(message: _messages[i]),
-                ),
-        ),
-        if (_loading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                SizedBox(width: 8),
-                Text('AI is thinking...', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-              ],
-            ),
-          ),
-        _InputBar(controller: _controller, onSend: () => _send()),
-      ],
-    );
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.embedded) {
-      return SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Text('AI Teacher', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-            ),
-            Expanded(child: _buildChat()),
-          ],
-        ),
+      return Column(
+        children: [
+          _ChatStatusBar(messageCount: _messages.length, loading: _loading),
+          Expanded(child: _buildMessages()),
+          if (_loading) _TypingIndicator(),
+          _InputBar(controller: _controller, onSend: () => _send(), enabled: !_loading),
+        ],
       );
     }
 
@@ -170,8 +115,148 @@ class _AiChatScreenState extends State<AiChatScreen> {
             Text('AI Teacher'),
           ],
         ),
+        actions: [
+          IconButton(icon: const Icon(Icons.add_comment_outlined), onPressed: clearChat, tooltip: 'New chat'),
+        ],
       ),
-      body: _buildChat(),
+      body: Column(
+        children: [
+          Expanded(child: _buildMessages()),
+          if (_loading) _TypingIndicator(),
+          _InputBar(controller: _controller, onSend: () => _send(), enabled: !_loading),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessages() {
+    if (_messages.isEmpty) return _EmptyChat(onSuggestion: _send);
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      itemCount: _messages.length,
+      itemBuilder: (_, i) => _ChatBubble(message: _messages[i]),
+    );
+  }
+}
+
+class _ChatStatusBar extends StatelessWidget {
+  final int messageCount;
+  final bool loading;
+
+  const _ChatStatusBar({required this.messageCount, required this.loading});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        border: Border(bottom: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: loading ? AppColors.accent : const Color(0xFF22C55E),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            loading ? 'AI is thinking...' : 'MacallinAI Teacher · Online',
+            style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary),
+          ),
+          const Spacer(),
+          if (messageCount > 0)
+            Text('$messageCount messages', style: TextStyle(fontSize: 11, color: isDark ? Colors.white38 : AppColors.textSecondary)),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyChat extends StatelessWidget {
+  final void Function(String) onSuggestion;
+  const _EmptyChat({required this.onSuggestion});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.primary.withValues(alpha: 0.15), const Color(0xFF7C3AED).withValues(alpha: 0.1)],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.smart_toy_rounded, size: 52, color: AppColors.primary),
+            ),
+            const SizedBox(height: 20),
+            const Text('Your AI Teacher', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text(
+              'Ask anything — get step-by-step explanations tailored for you',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: isDark ? Colors.white60 : AppColors.textSecondary, fontSize: 14),
+            ),
+            const SizedBox(height: 28),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: AiChatScreenState._suggestions
+                  .map((s) => ActionChip(
+                        avatar: const Icon(Icons.lightbulb_outline_rounded, size: 16),
+                        label: Text(s, style: const TextStyle(fontSize: 12)),
+                        onPressed: () => onSuggestion(s),
+                      ))
+                  .toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TypingIndicator extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                SizedBox(width: 8),
+                Text('Thinking...', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -179,44 +264,44 @@ class _AiChatScreenState extends State<AiChatScreen> {
 class _InputBar extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
+  final bool enabled;
 
-  const _InputBar({required this.controller, required this.onSend});
+  const _InputBar({required this.controller, required this.onSend, this.enabled = true});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 8),
+      padding: EdgeInsets.fromLTRB(16, 10, 16, MediaQuery.of(context).padding.bottom + 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        border: Border(top: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, -2))],
       ),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: controller,
+              enabled: enabled,
               decoration: InputDecoration(
-                hintText: 'Ask a question...',
+                hintText: 'Ask your AI teacher...',
                 filled: true,
-                fillColor: Theme.of(context).brightness == Brightness.dark
-                    ? AppColors.darkSurface
-                    : Colors.grey.shade100,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
+                fillColor: isDark ? AppColors.dark : Colors.grey.shade100,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               ),
               textInputAction: TextInputAction.send,
-              onSubmitted: (_) => onSend(),
+              onSubmitted: enabled ? (_) => onSend() : null,
             ),
           ),
           const SizedBox(width: 8),
           Material(
-            color: AppColors.primary,
+            color: enabled ? AppColors.primary : Colors.grey,
             borderRadius: BorderRadius.circular(24),
             child: InkWell(
-              onTap: onSend,
+              onTap: enabled ? onSend : null,
               borderRadius: BorderRadius.circular(24),
               child: const Padding(
                 padding: EdgeInsets.all(12),
@@ -239,27 +324,49 @@ class _ChatBubble extends StatelessWidget {
     final isUser = message['role'] == 'user';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-        decoration: BoxDecoration(
-          color: isUser ? AppColors.primary : (isDark ? AppColors.darkSurface : Colors.white),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(isUser ? 16 : 4),
-            bottomRight: Radius.circular(isUser ? 4 : 16),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isUser) ...[
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+              child: const Icon(Icons.smart_toy_rounded, size: 16, color: AppColors.primary),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isUser ? AppColors.primary : (isDark ? AppColors.darkSurface : Colors.white),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: Radius.circular(isUser ? 18 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 18),
+                ),
+                border: isUser ? null : Border.all(color: isDark ? Colors.white12 : Colors.grey.shade200),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+              ),
+              child: Text(
+                message['content'] ?? '',
+                style: TextStyle(color: isUser ? Colors.white : null, height: 1.5, fontSize: 14),
+              ),
+            ),
           ),
-          border: isUser ? null : Border.all(color: Colors.grey.shade200),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
-        ),
-        child: Text(
-          message['content'] ?? '',
-          style: TextStyle(color: isUser ? Colors.white : null, height: 1.45, fontSize: 14),
-        ),
+          if (isUser) ...[
+            const SizedBox(width: 8),
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+              child: const Icon(Icons.person_rounded, size: 16, color: AppColors.primary),
+            ),
+          ],
+        ],
       ),
     );
   }

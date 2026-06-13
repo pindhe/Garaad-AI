@@ -3,9 +3,11 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
+import { AdminProvider, useAdmin } from '@/components/AdminContext';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { sidebarCollapsed } = useAdmin();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -13,9 +15,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#f4f6fb]">
       <Sidebar />
-      <main className="ml-64 p-8">{children}</main>
+      <main
+        className={`min-h-screen transition-all duration-300 ${
+          sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'
+        }`}
+      >
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+      </main>
     </div>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AdminProvider>
+      <DashboardShell>{children}</DashboardShell>
+    </AdminProvider>
   );
 }
