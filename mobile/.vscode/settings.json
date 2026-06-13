@@ -5,7 +5,10 @@
   "dart.flutterHotRestartOnSave": "never",
   "editor.formatOnSave": true,
   "[dart]": {
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "Dart-Code.dart-code"
+    "editor.formatOnSave": true
+  },
+  "files.watcherExclude": {
+    "**/.dart_tool/**": true,
+    "**/build/**": true
   }
 }
