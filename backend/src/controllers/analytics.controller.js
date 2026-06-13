@@ -66,7 +66,128 @@ async function getStudentProgress(req, res) {
 async function listSubscriptions(req, res) {
   try {
     const subs = await db.query('SELECT * FROM subscriptions ORDER BY price_monthly');
+    subs.forEach((sub) => {
+      if (typeof sub.features === 'string') {
+        try {
+          sub.features = JSON.parse(sub.features);
+        } catch {
+          sub.features = [];
+        }
+      }
+    });
     res.json(subs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+const PLAN_TYPES = ['free', 'pro', 'school', 'university'];
+
+function normalizeFeatures(features) {
+  if (Array.isArray(features)) return features.filter(Boolean);
+  if (typeof features === 'string') {
+    const trimmed = features.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+      } catch {
+        return trimmed.split('\n').map((f) => f.trim()).filter(Boolean);
+      }
+    }
+    return trimmed.split('\n').map((f) => f.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+async function createSubscription(req, res) {
+  try {
+    const { name, planType, priceMonthly, features, isActive } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
+    if (!planType || !PLAN_TYPES.includes(planType)) {
+      return res.status(400).json({ error: 'Valid planType is required (free, pro, school, university)' });
+    }
+
+    const existing = await db.query('SELECT id FROM subscriptions WHERE plan_type = ?', [planType]);
+    if (existing.length) {
+      return res.status(400).json({ error: 'A plan with this type already exists' });
+    }
+
+    const result = await db.query(
+      'INSERT INTO subscriptions (name, plan_type, price_monthly, features, is_active) VALUES (?, ?, ?, ?, ?)',
+      [name.trim(), planType, priceMonthly ?? 0, JSON.stringify(normalizeFeatures(features)), isActive ?? true]
+    );
+    const [sub] = await db.query('SELECT * FROM subscriptions WHERE id = ?', [result.insertId]);
+    if (typeof sub.features === 'string') sub.features = JSON.parse(sub.features);
+    res.status(201).json(sub);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+async function updateSubscriptionPlan(req, res) {
+  try {
+    const { name, planType, priceMonthly, features, isActive } = req.body;
+    const id = req.params.id;
+
+    const [existing] = await db.query('SELECT * FROM subscriptions WHERE id = ?', [id]);
+    if (!existing) return res.status(404).json({ error: 'Subscription not found' });
+
+    if (planType && planType !== existing.plan_type) {
+      if (!PLAN_TYPES.includes(planType)) {
+        return res.status(400).json({ error: 'Invalid planType' });
+      }
+      const duplicate = await db.query(
+        'SELECT id FROM subscriptions WHERE plan_type = ? AND id != ?',
+        [planType, id]
+      );
+      if (duplicate.length) {
+        return res.status(400).json({ error: 'Another plan already uses this type' });
+      }
+    }
+
+    await db.query(
+      `UPDATE subscriptions SET
+         name = COALESCE(?, name),
+         plan_type = COALESCE(?, plan_type),
+         price_monthly = COALESCE(?, price_monthly),
+         features = COALESCE(?, features),
+         is_active = COALESCE(?, is_active)
+       WHERE id = ?`,
+      [
+        name?.trim() || null,
+        planType || null,
+        priceMonthly ?? null,
+        features !== undefined ? JSON.stringify(normalizeFeatures(features)) : null,
+        isActive ?? null,
+        id,
+      ]
+    );
+
+    const [sub] = await db.query('SELECT * FROM subscriptions WHERE id = ?', [id]);
+    if (typeof sub.features === 'string') sub.features = JSON.parse(sub.features);
+    res.json(sub);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+async function deleteSubscriptionPlan(req, res) {
+  try {
+    const id = req.params.id;
+    const [existing] = await db.query('SELECT * FROM subscriptions WHERE id = ?', [id]);
+    if (!existing) return res.status(404).json({ error: 'Subscription not found' });
+
+    const payments = await db.query('SELECT id FROM payments WHERE subscription_id = ? LIMIT 1', [id]);
+    if (payments.length) {
+      return res.status(400).json({
+        error: 'Cannot delete a plan with payment history. Deactivate it instead.',
+      });
+    }
+
+    await db.query('DELETE FROM subscriptions WHERE id = ?', [id]);
+    res.json({ message: 'Subscription deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -149,6 +270,9 @@ module.exports = {
   getDashboard,
   getStudentProgress,
   listSubscriptions,
+  createSubscription,
+  updateSubscriptionPlan,
+  deleteSubscriptionPlan,
   createAnnouncement,
   getNotifications,
   markNotificationRead,
