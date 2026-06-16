@@ -53,12 +53,14 @@ CREATE TABLE IF NOT EXISTS courses (
   INDEX idx_courses_published (is_published)
 );
 
--- Subjects
+-- Subjects (AI Teacher categories)
 CREATE TABLE IF NOT EXISTS subjects (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL UNIQUE,
   description TEXT,
-  icon VARCHAR(50)
+  icon VARCHAR(50) DEFAULT 'book',
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Course-Subject mapping
@@ -306,11 +308,13 @@ INSERT INTO system_settings (setting_key, setting_value) VALUES
   ('ai_system_prompt', 'You are MacallinAI, an expert autonomous AI teacher. Teach step-by-step, use examples, encourage students, and adapt to their level.')
 ON DUPLICATE KEY UPDATE setting_key = VALUES(setting_key);
 
--- Seed default subjects
-INSERT INTO subjects (name, description, icon) VALUES
-  ('Mathematics', 'Algebra, Geometry, Calculus', 'calculator'),
-  ('Science', 'Physics, Chemistry, Biology', 'flask'),
-  ('English', 'Grammar, Literature, Writing', 'book'),
-  ('History', 'World History, Civilizations', 'landmark'),
-  ('Computer Science', 'Programming, Algorithms', 'code')
+-- Seed default subjects / AI Teacher categories
+INSERT INTO subjects (name, description, icon, is_active) VALUES
+  ('IT', 'Programming, software, and technology', 'code', TRUE),
+  ('Language', 'English, Somali, and world languages', 'languages', TRUE),
+  ('Sports', 'Physical education, fitness, and athletics', 'trophy', TRUE),
+  ('Health', 'Nutrition, wellness, and medical basics', 'heart-pulse', TRUE),
+  ('Mathematics', 'Algebra, Geometry, Calculus', 'calculator', TRUE),
+  ('Science', 'Physics, Chemistry, Biology', 'flask', TRUE),
+  ('History', 'World History, Civilizations', 'landmark', TRUE)
 ON DUPLICATE KEY UPDATE name = VALUES(name);
