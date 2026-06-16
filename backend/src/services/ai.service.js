@@ -179,40 +179,6 @@ Return valid JSON only:
   return JSON.parse(content);
 }
 
-async function generateLessons(categoryName, level, topics, lessonCount, userId) {
-  const client = getClient();
-  if (!client) throw new Error('OpenAI API key not configured');
-
-  const count = lessonCount || Math.max(topics.length, 3);
-  const prompt = `You are an expert AI teacher. Generate ${count} detailed lessons for the "${categoryName}" category at ${level} level.
-Topics to cover: ${topics.join(', ')}
-
-Return valid JSON only:
-{
-  "lessons": [
-    {
-      "title": "Lesson title",
-      "content": "Full lesson content with step-by-step explanations",
-      "examples": ["example1", "example2"],
-      "notes": "Key summary notes",
-      "duration_minutes": 20
-    }
-  ]
-}`;
-
-  const response = await client.chat.completions.create({
-    model: config.openai.model,
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.7,
-    response_format: { type: 'json_object' },
-  });
-
-  const content = response.choices[0].message.content;
-  await logAiAction(userId, 'generate_lessons', response.usage, config.openai.model, { categoryName, level, topics }, content);
-
-  return JSON.parse(content);
-}
-
 async function generateQuiz(topic, count, difficulty, userId) {
   const client = getClient();
   if (!client) throw new Error('OpenAI API key not configured');
@@ -376,7 +342,6 @@ function newSessionId() {
 module.exports = {
   chat,
   generateCourse,
-  generateLessons,
   generateQuiz,
   gradeSubmission,
   gradeQuizAnswers,

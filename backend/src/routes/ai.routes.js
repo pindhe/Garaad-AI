@@ -10,7 +10,6 @@ router.use(authenticate);
 router.post('/chat', aiLimiter, authorize('student'), aiController.chat);
 router.get('/chat/:sessionId', authorize('student'), aiController.getChatHistory);
 router.post('/generate-course', aiLimiter, authorize('admin'), aiController.generateCourse);
-router.post('/generate-lessons', aiLimiter, authorize('admin'), aiController.generateLessons);
 router.post('/generate-quiz', aiLimiter, authorize('admin'), aiController.generateQuiz);
 router.post('/grade', aiLimiter, authorize('admin'), aiController.gradeSubmission);
 router.get('/status', aiController.getAiStatus);

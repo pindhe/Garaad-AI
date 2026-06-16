@@ -14,7 +14,7 @@ const aiRoutes = require('./routes/ai.routes');
 const examsRoutes = require('./routes/exams.routes');
 const assignmentsRoutes = require('./routes/assignments.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
-const subjectsRoutes = require('./routes/subjects.routes');
+const publicRoutes = require('./routes/public.routes');
 
 const uploadDir = path.join(__dirname, '..', config.upload.dir);
 if (!fs.existsSync(uploadDir)) {
@@ -53,7 +53,6 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'MacallinAI API', version: '1.0.0' });
 });
 
-app.use('/subjects', subjectsRoutes);
 app.use('/public', publicRoutes);
 app.use('/auth', authRoutes);
 app.use('/students', studentsRoutes);
