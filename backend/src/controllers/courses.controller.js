@@ -83,11 +83,35 @@ async function getCourse(req, res) {
 
 async function createCourse(req, res) {
   try {
-    const { title, description, subject, thumbnailUrl, isPublished } = req.body;
+    const { title, description, subject, categoryId, thumbnailUrl, isPublished } = req.body;
+    if (!title?.trim()) return res.status(400).json({ error: 'Course title is required' });
+
+    let subjectName = subject?.trim() || null;
+    if (categoryId) {
+      const [cat] = await db.query('SELECT id, name FROM subjects WHERE id = ?', [categoryId]);
+      if (!cat) return res.status(400).json({ error: 'Category not found' });
+      subjectName = cat.name;
+    }
+
     const result = await db.query(
       'INSERT INTO courses (title, description, subject, thumbnail_url, is_published, created_by) VALUES (?, ?, ?, ?, ?, ?)',
-      [title, description, subject, thumbnailUrl, isPublished ?? false, req.user.id]
+      [
+        title.trim(),
+        description?.trim() || null,
+        subjectName,
+        thumbnailUrl?.trim() || null,
+        isPublished ?? false,
+        req.user.id,
+      ]
     );
+
+    if (categoryId) {
+      await db.query(
+        'INSERT IGNORE INTO course_subjects (course_id, subject_id) VALUES (?, ?)',
+        [result.insertId, categoryId]
+      );
+    }
+
     const [course] = await db.query('SELECT * FROM courses WHERE id = ?', [result.insertId]);
     res.status(201).json(course);
   } catch (err) {
