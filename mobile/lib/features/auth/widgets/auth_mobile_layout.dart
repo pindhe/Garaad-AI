@@ -95,6 +95,7 @@ class AuthHeroHeader extends StatelessWidget {
   final String subtitle;
   final bool apiOnline;
   final VoidCallback? onBack;
+  final bool compact;
 
   const AuthHeroHeader({
     super.key,
@@ -102,14 +103,19 @@ class AuthHeroHeader extends StatelessWidget {
     required this.subtitle,
     required this.apiOnline,
     this.onBack,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final titleSize = compact ? 26.0 : 32.0;
+    final topGap = compact ? 16.0 : 28.0;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      padding: EdgeInsets.fromLTRB(20, compact ? 8 : 12, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
@@ -121,12 +127,12 @@ class AuthHeroHeader extends StatelessWidget {
                 )
               else
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(compact ? 8 : 10),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(Icons.auto_stories_rounded, color: Colors.white, size: 26),
+                  child: Icon(Icons.auto_stories_rounded, color: Colors.white, size: compact ? 22 : 26),
                 ),
               const Spacer(),
               Container(
@@ -156,18 +162,23 @@ class AuthHeroHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 28),
+          SizedBox(height: topGap),
           Text(
             'MacallinAI',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 1.2),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: compact ? 12 : 14, fontWeight: FontWeight.w600, letterSpacing: 1.2),
           ),
           const SizedBox(height: 6),
           Text(
             title,
-            style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800, height: 1.15, letterSpacing: -0.5),
+            style: TextStyle(color: Colors.white, fontSize: titleSize, fontWeight: FontWeight.w800, height: 1.15, letterSpacing: -0.5),
           ),
           const SizedBox(height: 8),
-          Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.82), fontSize: 15, height: 1.4)),
+          Text(
+            subtitle,
+            maxLines: compact ? 2 : 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.82), fontSize: compact ? 13 : 15, height: 1.4),
+          ),
         ],
       ),
     );
@@ -182,6 +193,8 @@ class AuthFormSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -199,7 +212,12 @@ class AuthFormSheet extends StatelessWidget {
             height: 4,
             decoration: BoxDecoration(color: isDark ? Colors.white24 : Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
           ),
-          Padding(padding: const EdgeInsets.fromLTRB(24, 20, 24, 28), child: child),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(24, 20, 24, 28 + bottomInset),
+              child: child,
+            ),
+          ),
         ],
       ),
     );

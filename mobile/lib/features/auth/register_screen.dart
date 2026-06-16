@@ -142,99 +142,100 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final size = MediaQuery.of(context).size;
+    final compact = MediaQuery.of(context).size.height < 720;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: AuthMobileBackground(
         gradientColors: const [Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFF2563EB)],
         child: FadeTransition(
           opacity: CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOut),
-          child: Column(
-            children: [
-              SafeArea(
-                bottom: false,
-                child: AuthHeroHeader(
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                AuthHeroHeader(
                   title: 'Start\nlearning',
                   subtitle: 'Join ${_stats.totalStudents > 0 ? '${_stats.totalStudents}+' : ''} students on MacallinAI',
                   apiOnline: _apiOnline,
                   onBack: _prevStep,
+                  compact: compact,
                 ),
-              ),
-              const Spacer(),
-              Transform.translate(
-                offset: Offset(_shakeOffset(), 0),
-                child: SizedBox(
-                  height: size.height * 0.58,
-                  child: AuthFormSheet(
-                    isDark: isDark,
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          AuthStepIndicator(total: 2, current: _step),
-                          const SizedBox(height: 16),
-                          Text(
-                            _step == 0 ? 'About you' : 'Your account',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _step == 0 ? 'Tell us who you are' : 'Set up email and password',
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                          ),
-                          const SizedBox(height: 16),
-                          if (_error != null) ...[AuthErrorBanner(message: _error!), const SizedBox(height: 8)],
-                          Expanded(
-                            child: PageView(
-                              controller: _pageCtrl,
-                              physics: const NeverScrollableScrollPhysics(),
-                              children: [
-                                _StepOne(
-                                  firstName: _firstName,
-                                  lastName: _lastName,
-                                  gradeLevel: _gradeLevel,
-                                ),
-                                _StepTwo(
-                                  email: _email,
-                                  password: _password,
-                                  confirmPassword: _confirmPassword,
-                                  obscurePassword: _obscurePassword,
-                                  obscureConfirm: _obscureConfirm,
-                                  acceptedTerms: _acceptedTerms,
-                                  onTogglePassword: () => setState(() => _obscurePassword = !_obscurePassword),
-                                  onToggleConfirm: () => setState(() => _obscureConfirm = !_obscureConfirm),
-                                  onTermsChanged: (v) => setState(() {
-                                    _acceptedTerms = v ?? false;
-                                    if (_acceptedTerms) _error = null;
-                                  }),
-                                  onPasswordChanged: () => setState(() {}),
-                                ),
-                              ],
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Transform.translate(
+                    offset: Offset(_shakeOffset(), 0),
+                    child: AuthFormSheet(
+                      isDark: isDark,
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            AuthStepIndicator(total: 2, current: _step),
+                            const SizedBox(height: 16),
+                            Text(
+                              _step == 0 ? 'About you' : 'Your account',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          AuthGradientButton(
-                            loading: _loading,
-                            onPressed: _nextStep,
-                            label: _step == 0 ? 'Next' : 'Create Account',
-                            icon: _step == 0 ? Icons.arrow_forward_rounded : Icons.check_rounded,
-                          ),
-                          if (_step == 1) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              _step == 0 ? 'Tell us who you are' : 'Set up email and password',
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                            ),
+                            const SizedBox(height: 16),
+                            if (_error != null) ...[AuthErrorBanner(message: _error!), const SizedBox(height: 8)],
+                            Expanded(
+                              child: PageView(
+                                controller: _pageCtrl,
+                                physics: const NeverScrollableScrollPhysics(),
+                                children: [
+                                  _StepOne(
+                                    firstName: _firstName,
+                                    lastName: _lastName,
+                                    gradeLevel: _gradeLevel,
+                                  ),
+                                  _StepTwo(
+                                    email: _email,
+                                    password: _password,
+                                    confirmPassword: _confirmPassword,
+                                    obscurePassword: _obscurePassword,
+                                    obscureConfirm: _obscureConfirm,
+                                    acceptedTerms: _acceptedTerms,
+                                    onTogglePassword: () => setState(() => _obscurePassword = !_obscurePassword),
+                                    onToggleConfirm: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                                    onTermsChanged: (v) => setState(() {
+                                      _acceptedTerms = v ?? false;
+                                      if (_acceptedTerms) _error = null;
+                                    }),
+                                    onPasswordChanged: () => setState(() {}),
+                                  ),
+                                ],
+                              ),
+                            ),
                             const SizedBox(height: 12),
-                            AuthLinkRow(
-                              prompt: 'Already have an account?',
-                              action: 'Sign In',
-                              onTap: () => Navigator.pop(context),
+                            AuthGradientButton(
+                              loading: _loading,
+                              onPressed: _nextStep,
+                              label: _step == 0 ? 'Next' : 'Create Account',
+                              icon: _step == 0 ? Icons.arrow_forward_rounded : Icons.check_rounded,
                             ),
+                            if (_step == 1) ...[
+                              const SizedBox(height: 12),
+                              AuthLinkRow(
+                                prompt: 'Already have an account?',
+                                action: 'Sign In',
+                                onTap: () => Navigator.pop(context),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -252,6 +253,8 @@ class _StepOne extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: EdgeInsets.zero,
       children: [
         AuthPillField(
           controller: firstName,
@@ -311,6 +314,8 @@ class _StepTwo extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: EdgeInsets.zero,
       children: [
         AuthPillField(
           controller: email,

@@ -106,107 +106,117 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final size = MediaQuery.of(context).size;
+    final height = MediaQuery.of(context).size.height;
+    final compact = height < 720;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: AuthMobileBackground(
         child: FadeTransition(
           opacity: CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOut),
-          child: Column(
-            children: [
-              SafeArea(
-                bottom: false,
-                child: AuthHeroHeader(
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                AuthHeroHeader(
                   title: 'Welcome\nback',
                   subtitle: _stats.tagline,
                   apiOnline: _apiOnline,
+                  compact: compact,
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                child: AuthCompactStats(
-                  students: _stats.totalStudents,
-                  courses: _stats.totalCourses,
-                  aiToday: _stats.aiSessionsToday,
-                ),
-              ),
-              const Spacer(),
-              Transform.translate(
-                offset: Offset(_shakeOffset(), 0),
-                child: SizedBox(
-                  height: size.height * 0.52,
-                  child: AuthFormSheet(
-                    isDark: isDark,
-                    child: Form(
-                      key: _formKey,
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Text('Sign in to continue', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 4),
-                            Text('${_stats.activeUsers} learners online now', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                            const SizedBox(height: 20),
-                            if (_error != null) AuthErrorBanner(message: _error!),
-                            AuthAnimatedField(
-                              delay: 80,
-                              child: AuthPillField(
-                                controller: _emailController,
-                                label: 'Email address',
-                                icon: Icons.mail_outline_rounded,
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                validator: (v) => v != null && v.contains('@') ? null : 'Enter a valid email',
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            AuthAnimatedField(
-                              delay: 140,
-                              child: AuthPillField(
-                                controller: _passwordController,
-                                label: 'Password',
-                                icon: Icons.lock_outline_rounded,
-                                obscure: _obscure,
-                                textInputAction: TextInputAction.done,
-                                onFieldSubmitted: _login,
-                                suffix: IconButton(
-                                  icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                                  onPressed: () => setState(() => _obscure = !_obscure),
-                                ),
-                                validator: (v) => v != null && v.length >= 6 ? null : 'Minimum 6 characters',
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                SizedBox(
-                                  height: 28,
-                                  child: Checkbox(
-                                    value: _rememberMe,
-                                    activeColor: AppColors.primary,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                                    onChanged: (v) => setState(() => _rememberMe = v ?? true),
+                if (!compact) ...[
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: AuthCompactStats(
+                      students: _stats.totalStudents,
+                      courses: _stats.totalCourses,
+                      aiToday: _stats.aiSessionsToday,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Transform.translate(
+                    offset: Offset(_shakeOffset(), 0),
+                    child: AuthFormSheet(
+                      isDark: isDark,
+                      child: Form(
+                        key: _formKey,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            return SingleChildScrollView(
+                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  const Text('Sign in to continue', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                                  const SizedBox(height: 4),
+                                  Text('${_stats.activeUsers} learners online now', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                                  const SizedBox(height: 20),
+                                  if (_error != null) AuthErrorBanner(message: _error!),
+                                  AuthAnimatedField(
+                                    delay: 80,
+                                    child: AuthPillField(
+                                      controller: _emailController,
+                                      label: 'Email address',
+                                      icon: Icons.mail_outline_rounded,
+                                      keyboardType: TextInputType.emailAddress,
+                                      textInputAction: TextInputAction.next,
+                                      validator: (v) => v != null && v.contains('@') ? null : 'Enter a valid email',
+                                    ),
                                   ),
-                                ),
-                                Text('Remember me', style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondary)),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            AuthGradientButton(loading: _loading, onPressed: _login, label: 'Sign In', icon: Icons.arrow_forward_rounded),
-                            const SizedBox(height: 16),
-                            AuthLinkRow(
-                              prompt: "Don't have an account?",
-                              action: 'Create one',
-                              onTap: () => Navigator.pushNamed(context, '/register'),
-                            ),
-                          ],
+                                  const SizedBox(height: 16),
+                                  AuthAnimatedField(
+                                    delay: 140,
+                                    child: AuthPillField(
+                                      controller: _passwordController,
+                                      label: 'Password',
+                                      icon: Icons.lock_outline_rounded,
+                                      obscure: _obscure,
+                                      textInputAction: TextInputAction.done,
+                                      onFieldSubmitted: _login,
+                                      suffix: IconButton(
+                                        icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                                        onPressed: () => setState(() => _obscure = !_obscure),
+                                      ),
+                                      validator: (v) => v != null && v.length >= 6 ? null : 'Minimum 6 characters',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      SizedBox(
+                                        height: 28,
+                                        child: Checkbox(
+                                          value: _rememberMe,
+                                          activeColor: AppColors.primary,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                          onChanged: (v) => setState(() => _rememberMe = v ?? true),
+                                        ),
+                                      ),
+                                      Text('Remember me', style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondary)),
+                                    ],
+                                  ),
+                                  SizedBox(height: compact ? 20 : 32),
+                                  AuthGradientButton(loading: _loading, onPressed: _login, label: 'Sign In', icon: Icons.arrow_forward_rounded),
+                                  const SizedBox(height: 16),
+                                  AuthLinkRow(
+                                    prompt: "Don't have an account?",
+                                    action: 'Create one',
+                                    onTap: () => Navigator.pushNamed(context, '/register'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
